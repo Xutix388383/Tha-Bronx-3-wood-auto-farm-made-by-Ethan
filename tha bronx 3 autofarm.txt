@@ -1,85 +1,84 @@
--- Tha Bronx 3 | Free Construction Autofarm | Autoexec Version
--- Made by Banovion | Extended by EthanHub
+-- Tha Bronx 3 | Fast Construction Autofarm | Autoexec Enhanced
+-- Made by Banovion | Turbo'd for EthanHub
 
 getgenv().cfg = {
-    ["switch_servers_when_no_wood"] = true, -- set to false to lock into one server
-    ["serverhop_timeout"] = 80 -- set high to prevent frequent hopping
+    ["switch_servers_when_no_wood"] = true,
+    ["serverhop_timeout"] = 80
 }
 
--- ✨ Auto-Play Handling: Clicks "Play" on BronxLoadscreen after serverhop
+-- ⚡ Auto-Play Optimized (fires immediately post-loadscreen)
 pcall(function()
-    repeat task.wait(3) until game:IsLoaded()
-    local gui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+    repeat task.wait() until game:IsLoaded()
+    local gui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
     local loadscreen = gui:WaitForChild("BronxLoadscreen", 30)
     local playButton = loadscreen:FindFirstChild("Frame") and loadscreen.Frame:FindFirstChild("play")
     if playButton then
         repeat
             firesignal(playButton.MouseButton1Click)
-            task.wait(0.5)
+            task.wait()
         until not gui:FindFirstChild("BronxLoadscreen")
     end
 end)
 
--- ✅ Wait for loadscreen to fully disappear
-repeat task.wait(1) until not game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("BronxLoadscreen")
+repeat task.wait() until not game.Players.LocalPlayer.PlayerGui:FindFirstChild("BronxLoadscreen")
 start = tick()
 
--- 🚧 Job starting logic
+-- 🚀 Job Trigger
 local job = workspace.ConstructionStuff["Start Job"].CFrame
 local function startjob()
-    if not game.Players.LocalPlayer:GetAttribute("WorkingJob") then
+    local attr = game.Players.LocalPlayer:GetAttribute("WorkingJob")
+    if not attr then
         game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = job
         fireproximityprompt(workspace.ConstructionStuff["Start Job"].Prompt)
     end
 end
 
--- 🪵 Tool equip + wall build + grab wood
+-- 🛠 Fast Wood Logic
 local function autoequipwood()
-    local bp = game:GetService("Players").LocalPlayer.Backpack
-    if bp:FindFirstChild("PlyWood") then
-        bp.PlyWood.Parent = game:GetService("Players").LocalPlayer.Character
-    end
+    local bp = game.Players.LocalPlayer.Backpack
+    local tool = bp:FindFirstChild("PlyWood")
+    if tool then tool.Parent = game.Players.LocalPlayer.Character end
 end
 
 local function wood()
-    for _,v in pairs(workspace.ConstructionStuff:GetDescendants()) do
-        if v:IsA("ProximityPrompt") and v.ActionText == "Wall" then
-            fireproximityprompt(v)
-        end
+    for _,v in workspace.ConstructionStuff:GetDescendants() do
+        if v:IsA("ProximityPrompt") and v.ActionText == "Wall" then fireproximityprompt(v) end
     end
 end
 
 local function grabwood()
-    for _,v in pairs(workspace.ConstructionStuff["Grab Wood"]:GetChildren()) do
-        if v:IsA("ProximityPrompt") and v.ActionText == "Wood" then
-            fireproximityprompt(v)
-        end
+    for _,v in workspace.ConstructionStuff["Grab Wood"]:GetChildren() do
+        if v:IsA("ProximityPrompt") and v.ActionText == "Wood" then fireproximityprompt(v) end
     end
 end
 
 local function mainautofarm()
-    for _,v in pairs(workspace.ConstructionStuff:GetDescendants()) do
-        if v:IsA("Part") and v:FindFirstChild("Attachment") and string.find(v.Name, "Prompt") then
-            local gui = v.Attachment:FindFirstChild("Gui")
+    local char = game.Players.LocalPlayer.Character
+    local bp = game.Players.LocalPlayer.Backpack
+    local hasWood = bp:FindFirstChild("PlyWood") or char:FindFirstChild("PlyWood")
+
+    for _,v in workspace.ConstructionStuff:GetDescendants() do
+        if v:IsA("Part") and string.find(v.Name, "Prompt") then
+            local gui = v:FindFirstChild("Attachment") and v.Attachment:FindFirstChild("Gui")
             if gui and gui:FindFirstChild("Label") and not string.find(gui.Label.Text, "RESETS") then
-                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = v.CFrame
+                char.HumanoidRootPart.CFrame = v.CFrame
             end
         end
     end
-    local char = game.Players.LocalPlayer.Character
-    local bp = game.Players.LocalPlayer.Backpack
-    if not (bp:FindFirstChild("PlyWood") or char:FindFirstChild("PlyWood")) then
+
+    if not hasWood then
         char.HumanoidRootPart.CFrame = CFrame.new(-1728, 371, -1177)
     end
 end
 
--- ⛏️ Autofarm loops
+-- ⚡ Turbo Farming Loops
 task.spawn(function()
-    while task.wait(0.25) do xpcall(startjob, debug.traceback) end
+    while true do task.wait() xpcall(startjob, debug.traceback) end
 end)
 
 task.spawn(function()
-    while task.wait(0.16) do
+    while true do
+        task.wait()
         xpcall(wood, debug.traceback)
         xpcall(grabwood, debug.traceback)
         xpcall(autoequipwood, debug.traceback)
@@ -87,70 +86,60 @@ task.spawn(function()
     end
 end)
 
--- 🌐 ServerHop (based on ProbTom’s fork)
+-- 🌐 ServerHop Routine
 local PlaceID = game.PlaceId
 local AllIDs, foundAnything = {}, ""
 local actualHour = os.date("!*t").hour
-local success = pcall(function() AllIDs = game.HttpService:JSONDecode(readfile("NotSameServers.json")) end)
-if not success then
+pcall(function() AllIDs = game.HttpService:JSONDecode(readfile("NotSameServers.json")) end)
+if not AllIDs[1] then
     table.insert(AllIDs, actualHour)
     writefile("NotSameServers.json", game.HttpService:JSONEncode(AllIDs))
 end
 
 function TPReturner()
-    local Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/'..PlaceID..'/servers/Public?sortOrder=Asc&limit=100'..(foundAnything ~= "" and "&cursor="..foundAnything or "")))
-    if Site.nextPageCursor then foundAnything = Site.nextPageCursor end
-    for _,v in pairs(Site.data) do
+    local link = 'https://games.roblox.com/v1/games/'..PlaceID..'/servers/Public?sortOrder=Asc&limit=100'
+    local Site = game.HttpService:JSONDecode(game:HttpGet(foundAnything ~= "" and (link.."&cursor="..foundAnything) or link))
+    foundAnything = Site.nextPageCursor or ""
+    for _,v in Site.data do
         if tonumber(v.maxPlayers) > tonumber(v.playing) then
             local Possible = true
-            for _,id in pairs(AllIDs) do
+            for _,id in AllIDs do
                 if id == v.id then Possible = false break end
             end
             if Possible then
                 table.insert(AllIDs, v.id)
                 writefile("NotSameServers.json", game.HttpService:JSONEncode(AllIDs))
                 game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceID, v.id, game.Players.LocalPlayer)
-                task.wait(4)
+                task.wait(2)
             end
         end
     end
 end
 
 function Teleport()
-    while true do
-        pcall(function()
-            TPReturner()
-            if foundAnything ~= "" then TPReturner() end
-        end)
-        task.wait()
-    end
+    while task.wait() do pcall(TPReturner) end
 end
 
--- 🧠 Check for wood availability
+-- 🧠 No-Wood Checker
 local function checkfornowood()
     if not cfg["switch_servers_when_no_wood"] then return end
-    local x = true
-    for _,v in pairs(workspace.ConstructionStuff:GetDescendants()) do
+    local noWood = true
+    for _,v in workspace.ConstructionStuff:GetDescendants() do
         if v:IsA("Part") and string.find(v.Name, "Prompt") then
             local label = v:FindFirstChild("Attachment"):FindFirstChild("Gui"):FindFirstChild("Label")
-            if label and not string.find(label.Text, "RESETS") then
-                x = false break
-            end
+            if label and not string.find(label.Text, "RESETS") then noWood = false break end
         end
     end
-    if x then Teleport() end
+    if noWood then Teleport() end
 end
 
--- ⏱️ Timeout failsafe
-local function timeout()
+-- ⏱ Timeout Hopper
+task.spawn(function()
     while true do
-        if tick() - start >= cfg["serverhop_timeout"] then Teleport() end
         task.wait(1)
+        if tick() - start >= cfg["serverhop_timeout"] then Teleport() end
     end
-end
-task.spawn(timeout)
+end)
 
--- 🔁 No-wood check loop
-while task.wait(4) do
-    xpcall(checkfornowood, debug.traceback)
-end
+-- 🔁 Wood Check Loop
+while task.wait(2) do xpcall(checkfornowood, debug.traceback) end
